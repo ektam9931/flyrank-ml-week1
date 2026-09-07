@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content Performance Prediction | FlyRank Capstone</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    line-height: 1.7;
+    background: #f7f7f7;
+    color: #222;
+}
+
+.container {
+    max-width: 950px;
+    margin: auto;
+    padding: 40px 20px;
+}
+
+header {
+    background: #111;
+    color: white;
+    padding: 60px 20px;
+}
+
+h1 {
+    font-size: 42px;
+    margin-bottom: 15px;
+}
+
+h2 {
+    margin-top: 50px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+}
+
+h3 {
+    margin-top: 30px;
+}
+
+.card {
+    background: white;
+    padding: 25px;
+    margin: 25px 0;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.metric {
+    background: #f0f0f0;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.metric strong {
+    display: block;
+    font-size: 28px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+th {
+    background: #f0f0f0;
+}
+
+.note {
+    background: #fff8dc;
+    padding: 18px;
+    border-left: 5px solid #d6b656;
+    border-radius: 6px;
+}
+
+ul {
+    padding-left: 25px;
+}
+
+footer {
+    margin-top: 60px;
+    padding: 30px 0;
+    border-top: 1px solid #ddd;
+    color: #666;
+}
+
+@media(max-width:700px) {
+    h1 {
+        font-size: 32px;
+    }
+
+    .metric-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="container">
+<p>FlyRank ML Internship · Machine Learning Capstone</p>
+
+<h1>Predicting Content Performance Changes for Search Discoverability</h1>
+
+<p>
+A decision-support model for identifying content pages that may warrant review or refresh.
+</p>
+
+<p><strong>Author:</strong> Ekta Kumari</p>
+</div>
+</header>
+
+<main class="container">
+
+<section>
+<h2>Abstract</h2>
+
+<div class="card">
+
+<p>
+This project asks whether historical search, traffic, engagement, and content signals can be used to predict changes in content clicks and prioritize pages for review. I framed the problem as a regression task where the target is the observed change in clicks between the latest 30-day period and the previous 30-day period. A Random Forest Regression model was evaluated using a client-grouped train-test split so that entire clients were held out from training. The leakage-audited model achieved an MAE of 1.478, RMSE of 7.048, and R² of 0.529, compared with a zero-change baseline MAE of 1.898 and RMSE of 10.267. The resulting predictions are used as directional decision-support signals for prioritizing pages for review rather than as guarantees of future performance or causal evidence about search algorithms.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>1. Introduction / Problem Statement</h2>
+
+<div class="card">
+
+<p>
+Content teams often have more pages to monitor than they can manually review. A useful machine-learning system should therefore help prioritize pages for attention using measurable historical signals.
+</p>
+
+<p>
+The research question for this capstone is:
+</p>
+
+<p><strong>
+Can historical content, search, traffic, and engagement signals help predict short-term changes in clicks and support a ranked content-review workflow?
+</strong></p>
+
+<p>
+The practical decision supported by this analysis is which pages deserve closer review or refresh attention, and which pages can instead be monitored or protected.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>2. Data</h2>
+
+<div class="card">
+
+<p>
+The analysis uses the public-safe FlyRank ML Internship dataset release available through the internship workflow. The working dataset contains 30,000 anonymized content observations and 44 original columns.
+</p>
+
+<p>
+The dataset includes anonymized content and client identifiers together with search-demand signals, competition indicators, content characteristics, historical impressions and clicks, sessions, engagement measures, content age, freshness indicators, CTR, average position, and trend information.
+</p>
+
+<p>
+The target was constructed as:
+</p>
+
+<p><strong>
+click_change = clicks_last_30d − clicks_prev_30d
+</strong></p>
+
+<p>
+No client names, domains, URLs, private queries, credentials, or raw private exports are included in this paper.
+</p>
+
+<p>
+The original dataset does not provide an observation date suitable for a chronological train-test split in this workflow. Therefore, the validation design uses grouped client-level separation rather than claiming time-aware validation.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>3. Methodology</h2>
+
+<div class="card">
+
+<h3>Target</h3>
+
+<p>
+The regression target is the observed change in clicks between the latest 30-day period and the previous 30-day period.
+</p>
+
+<h3>Features</h3>
+
+<p>
+The model uses numerical and categorical signals describing search demand, competition, content characteristics, historical traffic, impressions, engagement, content age, freshness, CTR, average position, and related performance indicators.
+</p>
+
+<h3>Validation design</h3>
+
+<p>
+A GroupShuffleSplit was used with client_id as the grouping variable. The split produced 23,837 training observations from 25 clients and 6,163 test observations from 7 held-out clients.
+</p>
+
+<p>
+This design prevents observations belonging to the same client from appearing in both training and test sets. Because there is no suitable observation date in this dataset, the split is not described as time-aware.
+</p>
+
+<h3>Model</h3>
+
+<p>
+The final model is a Random Forest Regressor with 200 trees and a maximum depth of 12. Numerical features were median-imputed, while categorical features were imputed using the most frequent category and one-hot encoded.
+</p>
+
+<h3>Baseline</h3>
+
+<p>
+The baseline predicts zero change for every test observation. This represents the simple assumption that clicks will not change.
+</p>
+
+<h3>Leakage audit</h3>
+
+<p>
+The final feature set explicitly excludes the target and direct components used to calculate the target: click_change, clicks_last_30d, clicks_prev_30d, and clicks_90d. Trend fields used in the earlier workflow were also excluded from the audited feature set.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>4. Results</h2>
+
+<div class="card">
+
+<div class="metric-grid">
+
+<div class="metric">
+<strong>1.478</strong>
+MAE
+</div>
+
+<div class="metric">
+<strong>7.048</strong>
+RMSE
+</div>
+
+<div class="metric">
+<strong>0.529</strong>
+R²
+</div>
+
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>MAE</th>
+<th>RMSE</th>
+<th>R²</th>
+</tr>
+</thead>
+
+<tbody>
+
+<tr>
+<td>Week-5 Random Forest</td>
+<td>1.459</td>
+<td>6.776</td>
+<td>0.564</td>
+</tr>
+
+<tr>
+<td>Leakage-audited Random Forest</td>
+<td>1.478</td>
+<td>7.048</td>
+<td>0.529</td>
+</tr>
+
+<tr>
+<td>Zero-change baseline</td>
+<td>1.898</td>
+<td>10.267</td>
+<td>-0.000</td>
+</tr>
+
+</tbody>
+</table>
+
+<p>
+The leakage-audited Random Forest performs better than the zero-change baseline on all three reported metrics. Its MAE is lower than the baseline by approximately 22%, while RMSE is also substantially lower. The R² value of approximately 0.529 indicates that the model explains a meaningful portion of variation in the held-out test data under this validation design.
+</p>
+
+<div class="note">
+<strong>Interpretation:</strong> These are measured results on the selected held-out client groups. They should be interpreted as evidence of predictive usefulness within this dataset and validation setup, not as proof of causal impact.
+</div>
+
+</div>
+</section>
+
+
+<section>
+<h2>5. Error Analysis</h2>
+
+<div class="card">
+
+<p>
+The model performs considerably better on typical observations than on extreme changes in clicks. The largest observed absolute prediction error was approximately 367.5 clicks.
+</p>
+
+<p>
+This indicates that extreme positive or negative changes are difficult for the model to estimate accurately. The model should therefore be treated as a prioritization system rather than a precise forecasting instrument for every individual page.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>6. Feature Importance</h2>
+
+<div class="card">
+
+<p>
+The Random Forest feature-importance analysis identified historical session and engagement signals among the strongest contributors.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Importance</th>
+</tr>
+</thead>
+
+<tbody>
+<tr><td>sessions_last_30d</td><td>0.2144</td></tr>
+<tr><td>sessions_prev_30d</td><td>0.1975</td></tr>
+<tr><td>scroll_events_90d</td><td>0.1416</td></tr>
+<tr><td>engaged_sessions_90d</td><td>0.0879</td></tr>
+<tr><td>impressions_prev_30d</td><td>0.0335</td></tr>
+<tr><td>ctr</td><td>0.0323</td></tr>
+<tr><td>scroll_rate</td><td>0.0295</td></tr>
+<tr><td>avg_position</td><td>0.0286</td></tr>
+<tr><td>impressions_last_30d</td><td>0.0277</td></tr>
+<tr><td>pageviews_90d</td><td>0.0192</td></tr>
+</tbody>
+</table>
+
+<p>
+These importances describe how the fitted Random Forest used the available features. They should not be interpreted as causal effects or proof that changing any individual signal will produce a particular search outcome.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>7. Ranked Recommendations</h2>
+
+<div class="card">
+
+<p>
+The model converts predicted negative click changes into an opportunity score for prioritization. Higher opportunity scores indicate larger predicted declines and therefore higher priority for review.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Content ID</th>
+<th>Predicted Click Change</th>
+<th>Opportunity Score</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody>
+
+<tr>
+<td>1</td>
+<td>content_9532f197bbc8</td>
+<td>-204.645</td>
+<td>204.645</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>2</td>
+<td>content_4a18c07e5357</td>
+<td>-168.835</td>
+<td>168.835</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>3</td>
+<td>content_4c36c775b818</td>
+<td>-165.839</td>
+<td>165.839</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>4</td>
+<td>content_3ad3a781fa91</td>
+<td>-140.567</td>
+<td>140.567</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>5</td>
+<td>content_37106924f264</td>
+<td>-122.376</td>
+<td>122.376</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>6</td>
+<td>content_007d1f134801</td>
+<td>-90.236</td>
+<td>90.236</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>7</td>
+<td>content_5fe46e04994d</td>
+<td>-66.023</td>
+<td>66.023</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>8</td>
+<td>content_bdd7c88a58ed</td>
+<td>-64.552</td>
+<td>64.552</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>9</td>
+<td>content_4090f0acd977</td>
+<td>-60.545</td>
+<td>60.545</td>
+<td>Review / Refresh</td>
+</tr>
+
+<tr>
+<td>10</td>
+<td>content_8c19996aa890</td>
+<td>-48.943</td>
+<td>48.943</td>
+<td>Review / Refresh</td>
+</tr>
+
+</tbody>
+</table>
+
+<h3>Action playbook</h3>
+
+<ul>
+<li><strong>Review / Refresh:</strong> prioritize pages with large predicted negative click changes for human review.</li>
+<li><strong>Monitor / Protect:</strong> pages with positive predicted changes can be monitored rather than immediately changed.</li>
+<li><strong>Validate before action:</strong> predictions should be checked against current page context and business priorities.</li>
+<li><strong>Do not infer causality:</strong> a high opportunity score does not prove that refreshing a page will cause clicks to increase.</li>
+</ul>
+
+</div>
+</section>
+
+
+<section>
+<h2>8. Limitations & Honest Framing</h2>
+
+<div class="card">
+
+<ul>
+<li>The dataset does not provide a suitable observation date for a chronological validation split.</li>
+<li>The grouped split tests generalization across held-out clients, not future performance over time.</li>
+<li>The target measures observed click change and does not establish why the change occurred.</li>
+<li>Feature importance describes model behavior and is not causal evidence.</li>
+<li>The model struggles with extreme click changes.</li>
+<li>The analysis cannot prove or disprove Google's ranking algorithm.</li>
+<li>The recommendations are decision-support signals and require human review.</li>
+</ul>
+
+<p>
+Therefore, the strongest defensible conclusion is that the leakage-audited Random Forest showed better predictive performance than the zero-change baseline under the selected grouped validation design and can be used as a directional prioritization tool.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>9. Reproducibility</h2>
+
+<div class="card">
+
+<p>
+The analysis was developed in Python using pandas and scikit-learn in Google Colab.
+</p>
+
+<p>
+The reproducible workflow is available in the project repository, including the Week-5 modeling notebook, Week-6 validation audit, and final capstone notebook.
+</p>
+
+<p>
+The capstone notebook contains the data preparation, grouped validation, model training, leakage audit, evaluation, feature-importance analysis, and ranked recommendation workflow.
+</p>
+
+</div>
+</section>
+
+
+<section>
+<h2>10. Acknowledgments & Data Credit</h2>
+
+<div class="card">
+
+<p>
+Built on the FlyRank ML Internship dataset.
+</p>
+
+<p>
+Data source:
+<a href="https://flyrank.ai/" target="_blank">FlyRank</a>
+</p>
+
+<p>
+This project was completed as part of the FlyRank ML Internship capstone.
+</p>
+
+</div>
+</section>
+
+
+<footer>
+
+<p>
+<strong>Machine Learning Capstone · Content Performance Prediction</strong>
+</p>
+
+<p>
+Observed results are reported transparently and should be interpreted within the stated validation design and limitations.
+</p>
+
+</footer>
+
+</div>
+</main>
+
+</body>
+</html>
